@@ -18,7 +18,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 #elif EFCORE
 using System.Threading;
 using System.Threading.Tasks;
-using System.Data.Common; 
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -97,6 +96,51 @@ namespace EntityFrameworkExtras.EFCore
                 return Activator.CreateInstance(type);
             }
             return null;
+        }
+
+        /// <summary>
+        /// Get values from DbDataReader and matching properties from model
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        public static IEnumerable<T> GetReaderValues<T>(this DbDataReader reader)
+        {
+            List<T> result = new List<T>();
+            T obj = default(T);
+
+            while (reader.Read())
+            {
+                obj = Activator.CreateInstance<T>();
+                foreach (PropertyInfo prop in obj.GetType().GetProperties())
+                {
+                    var val = GetValue(reader, prop.Name);
+                    if (!object.Equals(val, DBNull.Value))
+                    {
+                        prop.SetValue(obj, val, null);
+                    }
+                }
+
+                result.Add(obj);
+            }
+
+            return result;
+        }
+        
+        /// <summary>
+        /// Check if column exists in result schema
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <param name="columnName"></param>
+        /// <returns></returns>
+        public static bool HasColumn(this DbDataReader reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+            }
+            return false;
         }
     }
 }

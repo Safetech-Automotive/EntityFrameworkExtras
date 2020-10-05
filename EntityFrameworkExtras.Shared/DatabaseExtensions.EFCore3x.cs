@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -274,6 +276,30 @@ namespace EntityFrameworkExtras.EFCore
 
 	        return entityType;
         }
-    }
+
+		/// <summary>
+		/// Executes the specified stored procedure against a database
+		/// and returns a DbDataReader.  Used for procedures returning multiple result sets.
+		/// </summary>
+		/// <param name="database">The database to execute against.</param>
+		/// <param name="storedProcedure">The stored procedure to execute.</param>
+		/// <returns></returns>
+		public static DbDataReader ExecuteReader(this DatabaseFacade database, object storedProcedure)
+		{
+			if (storedProcedure == null)
+				throw new ArgumentNullException("storedProcedure");
+
+			var info = StoredProcedureParser.BuildStoredProcedureInfo(storedProcedure);
+
+			using (var command = database.GetDbConnection().CreateCommand())
+			{
+				command.CommandText = info.Sql;
+				command.Parameters.AddRange(info.SqlParameters);
+				database.OpenConnection();
+
+				return command.ExecuteReader();
+			}
+		}
+	}
 }
 #endif
